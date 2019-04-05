@@ -13,10 +13,10 @@ environment.
 class ActorCritic(nn.Module):
     def __init__(self):
         super(ActorCritic, self).__init__()
-        self.affine = nn.Linear(2, 128)
+        self.affine = nn.Linear(2, 32)
         
-        self.action_layer = nn.Linear(128, 2)
-        self.value_layer = nn.Linear(128, 1)
+        self.action_layer = nn.Linear(32, 2)
+        self.value_layer = nn.Linear(32, 1)
         
         self.logprobs = []
         self.state_values = []
@@ -37,14 +37,13 @@ class ActorCritic(nn.Module):
         state = F.relu(self.affine(state))
         
         state_value = self.value_layer(state)
-        action_parameters = F.softmax(self.action_layer(state))
+        action_parameters = F.tanh(self.action_layer(state))
         action_distribution = Normal(action_parameters[0][0], action_parameters[0][1])
         
         action = action_distribution.sample() # Torch.tensor; action
         
-        self.logprobs.append(action_distribution.log_prob(action))
+        self.logprobs.append(action_distribution.log_prob(action)+ 1e-6)
         self.state_values.append(state_value)
-
         return action.item() # Float element
         
         
@@ -88,7 +87,7 @@ class RandomAgent():
         
         self.count_episodes = -1
         self.max_position = -0.4
-        self.epsilon = 0.3
+        self.epsilon = 0.9
         self.gamma = 0.99
         self.running_rewards = 0
         self.policy = ActorCritic()
@@ -106,7 +105,7 @@ class RandomAgent():
 
         range for vx is always [-20, 20]
         """
-        self.epsilon = (self.epsilon * 0.9)
+        self.epsilon = (self.epsilon * 0.99)
         self.count_episodes += 1
         return (np.random.uniform(x_range[0],x_range[1]), np.random.uniform(-20,20))
 
@@ -128,7 +127,7 @@ class RandomAgent():
         
         
         if np.random.rand(1) < self.epsilon:
-            return np.random.uniform(0,2)
+            return np.random.uniform(-1,1)
         else:
             action = self.policy(observation)
             return action
