@@ -25,7 +25,6 @@ class ActorCritic(nn.Module):
         
 
     def forward(self, observation):
-        
         # Convert tuple into tensor
         observation_as_list = []
         observation_as_list.append(observation[0])
@@ -41,12 +40,12 @@ class ActorCritic(nn.Module):
         action_parameters = F.softmax(self.action_layer(state))
         action_distribution = Normal(action_parameters[0][0], action_parameters[0][1])
         
-        action = action_distribution.sample()
+        action = action_distribution.sample() # Torch.tensor; action
         
         self.logprobs.append(action_distribution.log_prob(action))
         self.state_values.append(state_value)
 
-        return action.item()
+        return action.item() # Float element
         
         
     
@@ -87,7 +86,7 @@ class RandomAgent():
         #self.theta = np.zeros((3, 2))
         #self.state = RandomAgent.reset(self,[-20,20])
         
-        self.count_episodes = 0
+        self.count_episodes = -1
         self.max_position = -0.4
         self.epsilon = 0.3
         self.gamma = 0.99
@@ -95,6 +94,7 @@ class RandomAgent():
         self.policy = ActorCritic()
         self.optimizer = optim.Adam(self.policy.parameters(), lr=0.01, betas=(0.9, 0.999))
         self.check_new_episode = 1
+        self.count_iter = 0
         
     def reset(self, x_range):
         """Reset the state of the agent for the start of new game.
@@ -128,7 +128,7 @@ class RandomAgent():
         
         
         if np.random.rand(1) < self.epsilon:
-            return np.random.randint(0,3)
+            return np.random.uniform(0,2)
         else:
             action = self.policy(observation)
             return action
@@ -139,12 +139,10 @@ class RandomAgent():
 
         This is where your agent can learn.
         """
-        
+        self.count_iter +=1
         self.policy.rewards.append(reward)
         self.running_rewards += reward
-        
-        if self.count_episodes == self.check_new_episode:
-        
+        if self.count_iter == 100:
             # We want first to update the critic agent:
             self.optimizer.zero_grad()
             self.loss = self.policy.calculateLoss(self.gamma)
@@ -152,7 +150,7 @@ class RandomAgent():
             self.optimizer.step()        
             self.policy.clearMemory()
             
-            self.check_new_episode += 1
+            self.count_iter = 0
         
 
 Agent = RandomAgent
