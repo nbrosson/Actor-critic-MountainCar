@@ -79,7 +79,7 @@ class ActorCritic(nn.Module):
 
 
 class RandomAgent():
-    def __init__(self):
+    def __init__(self, vx_max=20):
         """Init a new agent.
         """
         #self.theta = np.zeros((3, 2))
@@ -94,6 +94,7 @@ class RandomAgent():
         self.optimizer = optim.Adam(self.policy.parameters(), lr=0.01, betas=(0.9, 0.999))
         self.check_new_episode = 1
         self.count_iter = 0
+        self.vx_max= vx_max
         
     def reset(self, x_range):
         """Reset the state of the agent for the start of new game.
@@ -126,10 +127,11 @@ class RandomAgent():
 #        observation = observation_as_list
         
         
-        if np.random.rand(1) < self.epsilon:
-            return np.random.uniform(-1,1)
+        if np.random.rand() < self.epsilon:
+            return np.random.rand()*2*self.vx_max  - self.vx_max
         else:
             action = self.policy(observation)
+            action = np.clip(action, -self.vx_max , self.vx_max )
             return action
 
     def reward(self, observation, action, reward):
