@@ -46,7 +46,7 @@ class ActorCritic(nn.Module):
         action_distribution = Normal(action_parameters[0][0], action_parameters[0][1])
         
         action = action_distribution.sample() # Torch.tensor; action
-        action_log_prob = action_distribution.log_prob(action)
+        action_log_prob = action_distribution.log_prob(action) # log_prob(action) =  log(p(a ∣ state))
         self.logprobs.append(action_log_prob)
         self.state_values.append(state_value)
         return action.item() # Float element
