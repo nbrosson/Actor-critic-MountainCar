@@ -13,10 +13,11 @@ environment.
 class ActorCritic(nn.Module):
     def __init__(self):
         super(ActorCritic, self).__init__()
-        self.affine = nn.Linear(2, 256)
+        self.affine = nn.Linear(2, 32)
+        self.affine_2 = nn.Linear(32,8)
         
-        self.action_layer = nn.Linear(256, 2)
-        self.value_layer = nn.Linear(256, 1)
+        self.action_layer = nn.Linear(8, 2)
+        self.value_layer = nn.Linear(8, 1)
         
         self.logprobs = []
         self.state_values = []
@@ -36,7 +37,9 @@ class ActorCritic(nn.Module):
         
         state = torch.from_numpy(observation).float()
         forward_state = F.tanh(self.affine(state))
-        #forward_state = (self.affine(state))
+        forward_state = F.tanh(self.affine_2(forward_state))
+        
+        
 
         state_value = self.value_layer(forward_state)
         action_parameters = (self.action_layer(forward_state)) # A voir quelle activation function mettre
@@ -44,19 +47,8 @@ class ActorCritic(nn.Module):
         
         action = action_distribution.sample() # Torch.tensor; action
         action_log_prob = action_distribution.log_prob(action)
-#        while math.isnan(action_log_prob.item()) == True:
-##            forward_state = F.tanh(self.affine(state))
-#             #action_parameters = (self.action_layer(forward_state)) # A voir quelle activation function mettre
-#             action_parameters[0][0] += 0.01
-#             action_parameters[0][1] += 0.01
-#             action_distribution = Normal(action_parameters[0][0], action_parameters[0][1])
-##            action = action_distribution.sample()
-#             print("ca bloque", action)
-#             action_log_prob = action_distribution.log_prob(action)
-#            print(action_distribution)
         self.logprobs.append(action_log_prob)
         self.state_values.append(state_value)
-        #print(action.item())
         return action.item() # Float element
         
     
@@ -96,8 +88,7 @@ class RandomAgent():
     def __init__(self):
         """Init a new agent.
         """
-        #self.theta = np.zeros((3, 2))
-        #self.state = RandomAgent.reset(self,[-20,20])
+        
         
         self.count_episodes = -1
         self.max_position = -0.4
@@ -120,15 +111,12 @@ class RandomAgent():
 
         range for vx is always [-20, 20]
         """
-        self.epsilon = (self.epsilon * 0.94)
+        #self.epsilon = (self.epsilon * 0.94)
         self.count_episodes += 1
         self.victory = False
-        #if self.count_episodes == 99:
-        #    plt.plot([i for i in range(99)], self.policy.all_loss, 'ro')
-        #    plt.show()
-            
+        self.max_position= np.mean(x_range)
         
-        #return (np.random.uniform(x_range[0],x_range[1]), np.random.uniform(-20,20))
+                  
         pass
 
     def act(self, observation):
@@ -140,20 +128,15 @@ class RandomAgent():
         observation = (x, vx)
         """
         
-#        observation_as_list = []
-#        observation_as_list.append(observation[0])
-#        observation_as_list.append(observation[1])
-#        observation_as_list = np.asarray(observation_as_list)
-#        observation_as_list = observation_as_list.reshape(1,2)
-#        observation = observation_as_list
-        
+
         
         if np.random.rand(1) < self.epsilon:
             return np.random.uniform(-1,1)
         
         else:
             x = observation[0]
-            vx = int((observation[1]+20)//5)
+            #vx = int((observation[1]+20)//5)
+            vx = int((observation[1]+20)//3)
             action = (x,vx)
             action = self.policy(observation)
             return action
@@ -166,6 +149,8 @@ class RandomAgent():
 
         This is where your agent can learn.
         """
+        
+        
         
         if reward > 0:
             print(observation)
@@ -183,14 +168,24 @@ class RandomAgent():
             self.policy.clearMemory()
             self.count_iter = 0
             
+            # We only moify epsilon if success or if max_position reached 
+            self.espilon = (self.epsilon * 0.94)
+            
         else:
-        
+            #we modify the reward if the agents reaches a new top position
+            if observation[0] > self.max_position:
+                reward += 30
+            
             self.count_iter +=1
             self.policy.rewards.append(reward)
             if self.count_iter == 400:
                 # We want first to update the critic agent:
-                for i in range(400):
-                    self.policy.rewards[i] -= 10  
+                #We modify the reward for the cases when the episodes didn't went upper than the last max_position
+                if observation[0] < self.max_position :
+                    for i in range(400):
+                        self.policy.rewards[i] -= 10 
+                else :
+                    self.espilon = (self.epsilon * 0.98)
                 self.optimizer.zero_grad()
                 self.loss = self.policy.calculateLoss(self.gamma)
                 #self.policy.all_loss.append(self.loss)
@@ -200,7 +195,4 @@ class RandomAgent():
                 self.count_iter = 0
         
 
-Agent = RandomAgent
-
-
-
+Agent = RandomAgent        
